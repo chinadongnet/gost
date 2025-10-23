@@ -1,0 +1,44 @@
+name: windows-binary
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    name: Build Windows executable
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.22'
+          cache: true
+
+      - name: Build Windows AMD64 binary
+        env:
+          GOBUILD: CGO_ENABLED=0 go build --ldflags="-s -w"
+        run: |
+          set -euo pipefail
+          make clean
+          make GOBUILD="$GOBUILD" windows-amd64
+          VERSION=$(grep 'Version =' gost.go | sed 's/.*"\(.*\)".*/\1/')
+          mkdir -p dist
+          cp bin/gost-windows-amd64.exe "dist/gost-${VERSION}-windows-amd64.exe"
+          (cd dist && zip -9 "gost-${VERSION}-windows-amd64.zip" "gost-${VERSION}-windows-amd64.exe")
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gost-windows-amd64
+          path: |
+            dist/gost-*-windows-amd64.exe
+            dist/gost-*-windows-amd64.zip
+          if-no-files-found: error
