@@ -1,0 +1,35 @@
+name: windows-binary
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.22'
+
+      - name: Build windows/amd64 executable
+        run: |
+          mkdir -p bin
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 \
+            go build -ldflags="-s -w" -o bin/gost-windows-amd64.exe ./cmd/gost
+
+      - name: Upload windows binary to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: bin/gost-windows-amd64.exe
+          asset_name: gost-windows-amd64.exe
+          asset_content_type: application/octet-stream
