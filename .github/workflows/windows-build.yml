@@ -1,44 +1,34 @@
 name: windows-binary
 
 on:
-  push:
-    branches:
-      - master
-    tags:
-      - 'v*'
-  workflow_dispatch:
+  release:
+    types: [published]
 
 jobs:
-  build-windows:
-    name: Build Windows executable
+  build-and-release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
           go-version: '1.22'
-          cache: true
 
-      - name: Build Windows AMD64 binary
-        env:
-          GOBUILD: CGO_ENABLED=0 go build --ldflags="-s -w"
+      - name: Build windows/amd64 executable
         run: |
-          set -euo pipefail
-          make clean
-          make GOBUILD="$GOBUILD" windows-amd64
-          VERSION=$(grep 'Version =' gost.go | sed 's/.*"\(.*\)".*/\1/')
-          mkdir -p dist
-          cp bin/gost-windows-amd64.exe "dist/gost-${VERSION}-windows-amd64.exe"
-          (cd dist && zip -9 "gost-${VERSION}-windows-amd64.zip" "gost-${VERSION}-windows-amd64.exe")
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+          mkdir -p bin
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 \
+            go build -ldflags="-s -w" -o bin/gost-windows-amd64.exe ./cmd/gost
+      - name: Upload windows binary to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: gost-windows-amd64
-          path: |
-            dist/gost-*-windows-amd64.exe
-            dist/gost-*-windows-amd64.zip
-          if-no-files-found: error
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: bin/gost-windows-amd64.exe
+          asset_name: gost-windows-amd64.exe
+          asset_content_type: application/octet-stream
