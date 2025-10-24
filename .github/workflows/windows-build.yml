@@ -23,7 +23,6 @@ jobs:
           mkdir -p bin
           GOOS=windows GOARCH=amd64 CGO_ENABLED=0 \
             go build -ldflags="-s -w" -o bin/gost-windows-amd64.exe ./cmd/gost
-
       - name: Upload windows binary to release
         uses: actions/upload-release-asset@v1
         env:
